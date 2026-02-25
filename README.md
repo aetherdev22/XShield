@@ -1,75 +1,226 @@
-# XSC — XShield Script Compiler
+# XShield Compiler Tools
 
-> [!CAUTION]
-> **Development Status**  
-> XSC masih dalam tahap pengembangan aktif. Fitur, metode proteksi, dan struktur output dapat berubah sewaktu-waktu.
+```
+╭────────────────────────────────╮
+      XShield Compiler v7.1      
+           (Plus Edition)        
 
----
+      Copyright (C) 2026         
+      XShield Team Project       
+╰────────────────────────────────╯
+```
 
-## 🛡 Tentang XSC
-
-**XShield Script Compiler (XSC)** adalah compiler yang mengubah **Bash Script** menjadi **binary ELF native** untuk meningkatkan keamanan source code dan distribusi script.
-
-XSC menggunakan kombinasi **GCC + Clang (aarch64)** serta sistem obfuscation untuk melindungi script dari reverse engineering dan analisis statis.
-
----
-
-## 🚀 Fitur Utama
-
-### 🔄 Bash to Native Binary
-Mengubah script `.sh` menjadi executable binary.
-
-- 🔐 Source script tidak dapat dibaca langsung
-- ⚡ Eksekusi lebih cepat dibanding interpreter shell
-- 📦 Output berupa binary standalone
+> **XShield** adalah tools untuk mengkompilasi dan mengobfuskasi script Shell (`.sh`) maupun program C (`.c`) menjadi binary terenkripsi yang dilindungi berbagai lapisan proteksi.
 
 ---
 
-### ⚙️ Dual Compiler Engine
+## Fitur
 
-XSC menggunakan toolchain modern:
-
-- 🧰 **GCC** → Stabil dan kompatibel luas
-- 🧬 **Clang aarch64** → Optimal untuk ARM64
-- 🔀 Auto compiler selection
-
----
-
-### 🧠 Protection Layer
-
-Lapisan keamanan tambahan:
-
-- 🧩 String obfuscation
-- 🧱 Dummy logic injection
-- 🌀 Basic anti static analysis
-- 🔒 Runtime payload execution (memory only)
+- Enkripsi payload dengan XOR multi-round + key & salt acak
+- Obfuskasi loader: junk functions, random arrays, padding blobs, chunking
+- Proteksi Anti-Debug, Anti-VM, Anti-Reverse
+- Self-Delete setelah eksekusi
+- Expiry date (binary otomatis mati setelah tanggal tertentu)
+- Kompresi UPX (--lzma -9) + strip otomatis di mode release
+- Mendukung compiler: `gcc`, `clang`, `tcc`, atau auto-detect
 
 ---
 
-### 📦 Standalone Output
+## Requirements
 
-- ❌ Tidak membutuhkan Bash source saat runtime
-- ✅ Binary langsung bisa dijalankan
-- ✅ Cocok untuk distribusi script
+Pastikan tools berikut tersedia di sistem sebelum kompilasi:
 
----
-
-## 🛠 Kompatibilitas
-
-| Spesifikasi | Status |
-|------------|---------|
-| OS | Linux / Android |
-| CPU ABI | arm64-v8a (aarch64) |
-| armeabi-v7a | ⚠️ Terbatas |
-| Root | ❌ Tidak wajib |
-
-> ⚠️ Direkomendasikan menggunakan perangkat ARM64 untuk performa dan stabilitas terbaik.
+| Tools | Fungsi | Install |
+|-------|--------|---------|
+| `gcc` / `clang` / `tcc` | Compiler utama | `pkg install gcc` / `apt install gcc` |
+| `make` | Build system | `pkg install make` |
+| `upx` | Kompresi binary (opsional) | `pkg install upx` |
+| `strip` | Strip simbol (opsional) | sudah include di `binutils` |
 
 ---
 
-## 📦 Cara Penggunaan
+## Cara Compile XShield
 
-### ▶️ Compile Script
+### 1. Clone Repository
 
 ```bash
-./xsc p.sh
+git clone https://github.com/xshield-team/xshield-compiler.git
+cd xshield-compiler
+```
+
+### 2. Compile Source
+
+**Menggunakan gcc (direkomendasikan):**
+
+```bash
+gcc xc.c -o xc -O2 -lm
+```
+
+**Menggunakan clang:**
+
+```bash
+clang xc.c -o xc -O2 -lm
+```
+
+**Menggunakan tcc (Termux / Android):**
+
+```bash
+tcc xc.c -o xc -lm
+```
+
+**Self-compilation (compile xc menggunakan xc sendiri):**
+
+```bash
+./xc xc.c -o xc
+```
+
+### 3. (Opsional) Install Global
+
+```bash
+cp xc /usr/local/bin/xc
+chmod +x /usr/local/bin/xc
+```
+
+---
+
+## Cara Pakai
+
+### Sintaks
+
+```
+./xc <script.sh | program.c> [options]
+```
+
+### Options
+
+| Flag | Keterangan | Default |
+|------|-----------|---------|
+| `-m release\|debug` | Build mode | `release` |
+| `-o OUTPUT` | Nama output binary | basename dari input |
+| `-c auto\|gcc\|clang\|tcc` | Pilih compiler | `auto` |
+| `--anti-debug` | Aktifkan anti-debug traps | off |
+| `--anti-vm` | Aktifkan deteksi anti-VM | off |
+| `--anti-reverse` | Aktifkan anti-reverse constructor | off |
+| `--self-delete` | Binary hapus diri setelah eksekusi | off |
+| `--expire YYYY-MM-DD` | Set tanggal kedaluwarsa binary | none |
+| `--no-upx` | Skip kompresi UPX | off |
+| `--no-strip` | Skip strip binary | off |
+| `--save-c` | Simpan generated `.c` source | off |
+| `-q` / `--quiet` | Sembunyikan semua output | off |
+
+---
+
+## Contoh Penggunaan
+
+**Compile script shell dasar:**
+```bash
+./xc script.sh
+```
+
+**Compile program C:**
+```bash
+./xc program.c
+```
+
+**Mode release dengan nama output custom:**
+```bash
+./xc script.sh -m release -o mybin
+```
+
+**Full proteksi:**
+```bash
+./xc script.sh -m release --anti-debug --anti-vm --anti-reverse --self-delete
+```
+
+**Dengan expiry date:**
+```bash
+./xc script.sh --expire 2026-12-31 --self-delete
+```
+
+**Ganti compiler ke tcc:**
+```bash
+./xc script.sh -c tcc -m release -o output
+```
+
+**Simpan generated source C:**
+```bash
+./xc script.sh --save-c
+```
+
+**Mode debug (tanpa strip & upx):**
+```bash
+./xc script.sh -m debug -o test_bin
+```
+
+**Self-compile:**
+```bash
+./xc xc.c -o xc
+```
+
+---
+
+## Compile di Android (Termux)
+
+```bash
+# Install dependencies
+pkg update && pkg install -y gcc tcc upx binutils
+
+# Clone & compile
+git clone https://github.com/xshield-team/xshield-compiler.git
+cd xshield-compiler
+gcc xc.c -o xc -O2 -lm
+
+# Jalankan
+./xc script.sh -m release --anti-debug --anti-vm
+```
+
+---
+
+## Output Build
+
+Setelah kompilasi berhasil, terminal menampilkan summary seperti berikut:
+
+```
+╭────────────────────────────────────────────────╮
+│  ▸ LUMINA BUILDER  Payload Obfuscator & Compiler│
+│  ──────────────────────────────────────────────│
+│  [*] Input
+│       Path  : /sdcard/script.sh
+│       Size  : 34962 bytes
+│       Type  : Shell script
+│  ──────────────────────────────────────────────│
+│  ✔ BUILD SUCCESS
+│  ──────────────────────────────────────────────│
+│    Output File : /sdcard/mybin
+│    File Size   : 345.29 KB
+│    Anti-Debug  : ✔ ENABLED
+│    Anti-VM     : ✔ ENABLED
+╰────────────────────────────────────────────────╯
+```
+
+---
+
+## Struktur File
+
+```
+xshield-compiler/
+├── xc.c            # Source utama compiler
+├── xc              # Binary hasil compile
+└── README.md       # Dokumentasi ini
+```
+
+---
+
+## Notes
+
+- Mode `release` otomatis menjalankan `strip` dan `upx` jika tersedia di sistem
+- Mode `debug` menonaktifkan strip, upx, dan optimasi — cocok untuk testing
+- Flag `--save-c` menyimpan generated loader sebagai file `.c` di direktori yang sama dengan output
+- Binary yang sudah di-compile tidak membutuhkan dependency apapun (standalone)
+- Flag `--expire` menggunakan format `YYYY-MM-DD` dan binary akan menolak eksekusi setelah tanggal tersebut
+
+---
+
+## License
+
+Copyright (C) 2026 XShield Team Project. All rights reserved.
